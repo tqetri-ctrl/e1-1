@@ -58,13 +58,17 @@ flowchart TD
      ```
 
 4. **Docker 런타임 설치 및 환경 설정 (환경별 최적 경로 선택)**
-   - **옵션 A: Docker Desktop for Windows (표준 개발 환경)**
-     1. 공식 사이트(https://www.docker.com/products/docker-desktop/)에서 인스톨러 다운로드 및 실행.
-     2. 설치 시 **"Use WSL 2 instead of Hyper-V (recommended)"** 체크 확인.
-     3. 설치 완료 후 Docker Desktop 실행 ➔ 상단 톱니바퀴 [Settings]:
-        - **[General]**: `Use the WSL 2 based engine` 체크 확인.
-        - **[Resources] ➔ [WSL integration]**: `Enable integration with my default WSL distro` 체크 및 `Ubuntu` 토글 ON.
-     4. 시스템 환경변수 `PATH`에 `C:\Program Files\Docker\Docker\resources\bin`이 자동 등록되어 PowerShell 및 CMD에서도 `docker` 명령어를 바로 사용할 수 있습니다.
+   - **옵션 A: Docker Desktop for Windows (표준 개발 환경, 최신 버전 기준)**
+     1. 공식 사이트(https://www.docker.com/products/docker-desktop/)에서 인스톨러(`Docker Desktop Installer.exe`, x86_64/AMD64용) 다운로드 및 실행.
+     2. 설치 마법사에서 **"Use recommended settings (Requires administrator password)"** 또는 **"Use WSL 2 instead of Hyper-V"**가 체크된 기본 상태로 설치 진행.
+     3. 설치 완료 후 Docker Desktop 실행 (하단 고래 아이콘이 초록색 'Engine running'이 될 때까지 대기).
+     4. 상단 우측 톱니바퀴 **[Settings]** 클릭 후 연동 설정:
+        - **[참고] 최신 버전의 [General]**: 최신 Docker Desktop은 WSL 2가 기본(Default) 엔진으로 자동 적용되므로, 구버전의 'Use the WSL 2 based engine' 체크박스를 별도로 찾으실 필요가 없습니다.
+        - **[Resources] ➔ [WSL integration]** 메뉴로 이동:
+          - ① 상단의 **`Enable integration with my default WSL distro`** 항목 체크.
+          - ② 하단의 **`Enable integration with additional distros:`** 아래에 표시된 **`Ubuntu`** 토글 스위치를 **ON (파란색)**으로 활성화.
+          - ③ 우측 하단의 **[Apply & restart]** 버튼을 클릭하여 적용.
+     5. 설정이 완료되면 Windows의 PowerShell/CMD는 물론, WSL의 Ubuntu 터미널 내부에서도 `docker` CLI 명령어를 즉시 사용할 수 있습니다.
    - **옵션 B: OrbStack (서울 캠퍼스 정책 / sudo 제한 환경)**
      1. 서울 캠퍼스 PC 또는 sudo 권한 제약이 있는 환경의 경우 제공되는 가이드에 따라 **OrbStack** 설치.
      2. OrbStack 실행 시 백그라운드에서 Docker 엔진 소켓이 자동 구동되며, 별도의 복잡한 데몬 설정 없이 일반 사용자 권한으로 `docker` 명령어를 직접 사용 가능.
@@ -100,8 +104,8 @@ flowchart TD
 - **수행 방법**:
   1. **Docker 실행 환경 세팅 (OS 및 권한 환경별)**
      - **Windows 환경 (Docker Desktop)**:
-       - Docker Desktop 실행 후 시스템 트레이에서 정상 구동(Engine running) 상태 확인.
-       - WSL2 백엔드가 활성화되어 있는지 확인 (Settings > General > Use the WSL 2 based engine).
+       - Docker Desktop 실행 후 시스템 트레이 또는 대시보드 좌측 하단에서 **Engine running (초록색 고래 아이콘)** 상태 확인.
+       - 최신 버전 기준: **[Settings] ➔ [Resources] ➔ [WSL integration]**에서 `Ubuntu` 연동 스위치가 ON으로 되어 있는지 확인.
      - **서울 캠퍼스 정책 환경 (sudo 권한 제한 시)**:
        - **OrbStack** 실행 (OrbStack이 백그라운드에서 Docker 엔진을 구동하여 sudo 권한 없이도 `docker` CLI 사용 가능).
   2. **환경 점검 명령어 실행**:
