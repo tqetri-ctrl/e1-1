@@ -39,6 +39,7 @@
 - [ ] **5단계**: Docker 볼륨 생성, 컨테이너 강제 삭제(`rm -f`) 전/후 데이터 영속성 검증
 - [ ] **6단계**: Git 사용자 정보(`tqetri-ctrl`) 설정, `.gitignore` 보안 적용, 원격 GitHub 연동
 - [x] **7단계**: 트러블슈팅 2건 이상 (문제 ➔ 원인 가설 ➔ 확인 ➔ 해결) 완비
+- [x] **보너스 1**: Docker Compose 기초 (`docker-compose.yml` 단일 서비스 선언 및 관리)
 
 ---
 
@@ -218,3 +219,54 @@ drwx------ 2 ksh ksh 4096 Nov  2 15:30 /home/ksh/practice/test_dir
 - **4. 해결 및 대안 (Resolution)**:
   - 충돌을 유발한 기존 컨테이너를 `docker stop <컨테이너ID>` 및 `docker rm <컨테이너ID>`로 정리.
   - 또는 호스트 포트를 `8081` 등 비어있는 포트로 매핑(`docker run -d -p 8081:80 ...`)하여 포트 충돌을 회피하고 정상 서비스 실행 완료.
+
+---
+
+## 10. 🎁 [보너스 과제 1] Docker Compose 기초 구현
+
+### 10.1 `docker-compose.yml` 기본 구조 및 소스코드
+단일 웹 서버 서비스를 코드로 명시하여 일관된 실행 환경을 보장합니다:
+
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: compose-web-server
+    ports:
+      - "${HOST_PORT:-8085}:80"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - SERVER_PORT=80
+    restart: unless-stopped
+```
+
+### 10.2 배움 포인트: 컨테이너 실행 명령이 "문서화된 실행 설정"으로 바뀌는 이유
+1. **반복 작업 및 인적 오류(Human Error) 제거**:
+   - 매번 길고 복잡한 명령어(`docker run -d -p 8085:80 --name compose-web-server -e APP_ENV=production ...`)를 외워서 치거나 오타를 낼 위험이 완전히 사라집니다.
+2. **코드로서의 인프라 (IaC, Infrastructure as Code)**:
+   - 포트 번호, 환경 변수, 빌드 컨텍스트, 재시작 정책 등의 실행 설정이 `docker-compose.yml` 파일 하나로 코드화되어 Git으로 버전 관리됩니다.
+3. **팀원과의 완벽한 재현성 공유**:
+   - 새로운 팀원이 합류해도 복잡한 실행 문서 대신 `docker compose up -d` 명령어 하나만으로 프로젝트 전체 서비스를 동일하게 즉시 띄울 수 있습니다.
+
+### 10.3 Compose 운영 명령어 및 상태 관리 가이드
+```bash
+# 1) 서비스 빌드 및 백그라운드 구동 (up)
+docker compose up -d
+
+# 2) 구동 상태 확인 (ps)
+docker compose ps
+
+# 3) 서비스 로그 확인 (logs)
+docker compose logs web
+
+# 4) 접속 확인 (curl)
+curl http://localhost:8085
+
+# 5) 서비스 정상 종료 및 컨테이너 정리 (down)
+docker compose down
+```
+

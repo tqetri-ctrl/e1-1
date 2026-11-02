@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  # 단일 웹 서버 서비스 정의 (보너스 과제 1)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: compose-web-server
+    ports:
+      - "${HOST_PORT:-8085}:80"
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - SERVER_PORT=80
+    restart: unless-stopped
+
