@@ -31,8 +31,52 @@
 ![Git 및 Docker 버전 확인](pictures/git&docker_version.png)
 *▲ 그림 1: 호스트 및 WSL 환경에서의 Git 및 Docker 버전 점검 로그*
 
-> 📄 **상세 데몬 정보 로그 전문**: [`pictures/docker_info.md`](pictures/docker_info.md)  
-> (Storage Driver: `overlayfs`, Cgroup Driver: `cgroupfs v2`, Runtimes: `runc`, Total Memory: `3.724GiB`)
+### 2.1 도구 점검 전체 출력 로그 (`docker --version` 및 `docker info`)
+평가 검증을 위해 터미널에서 수행한 버전 확인 및 Docker 데몬 상태 점검 텍스트 출력 전문을 직렬 수록합니다:
+
+```bash
+# 1) Docker 및 Git 버전 확인
+$ docker --version
+Docker version 29.9.2, build a82e528
+
+$ git --version
+git version 2.52.0.windows.1
+
+# 2) Docker 데몬 상태 점검 (docker info 발췌 전문)
+$ docker info
+Client:
+ Version:    29.9.2
+ Context:    desktop-linux
+ Debug Mode: false
+ Plugins:
+  buildx: Docker Buildx (v0.38.1)
+  compose: Docker Compose (v5.6.1)
+
+Server:
+ Containers: 0
+  Running: 0
+  Paused: 0
+  Stopped: 0
+ Images: 0
+ Server Version: 29.9.2
+ Storage Driver: overlayfs
+  driver-type: io.containerd.snapshotter.v1
+ Logging Driver: local
+ Cgroup Driver: cgroupfs
+ Cgroup Version: 2
+ Plugins:
+  Volume: local
+  Network: bridge host ipvlan macvlan null overlay
+ Kernel Version: 6.18.54.1-microsoft-standard-WSL2
+ Operating System: Docker Desktop
+ OSType: linux
+ Architecture: x86_64
+ CPUs: 8
+ Total Memory: 3.724GiB
+ Docker Root Dir: /var/lib/docker
+ Live Restore Enabled: false
+```
+> 📄 전체 원문 파일 링크: [`pictures/docker_info.md`](pictures/docker_info.md)
 
 ---
 
@@ -137,8 +181,9 @@ Windows 호스트에서 컨테이너 가상화를 안정적으로 구동하기 �
 ### 6.1 터미널 기본 조작 필수 9종 로그
 
 > 💡 **경로 개념 정리**:
-> - **절대 경로(Absolute Path)**: 루트 디렉토리(`/`)를 기점으로 파일의 전체 고유 위치를 표현 (예: `/home/ksh/practice/test_dir/sample.txt`). 현재 디렉토리 위치와 무관하게 고정됩니다.
-> - **상대 경로(Relative Path)**: 현재 작업 디렉토리(`.` 또는 `pwd`)를 기점으로 상대적 위치를 표현 (예: `./sample.txt`, `../test_dir`).
+> - **절대 경로(Absolute Path)**: 최상위 루트 디렉토리(`/`)를 기점으로 대상 파일까지의 전체 고유 위치를 표현 (예: `/home/ksh/practice/test_dir/sample.txt`). 현재 작업 위치와 무관하게 항상 동일한 대상을 지칭합니다.
+> - **상대 경로(Relative Path)**: 현재 작업 디렉토리(`.` 또는 `pwd`)를 기점으로 상대적 위치를 표현 (예: `./sample.txt`, `../test_dir`). 위치 이동 시 참조 대상이 변합니다.
+> - **호스트↔컨테이너 경로 매핑 주의사항**: Windows 호스트 경로(`D:\cody\e1-1`)를 컨테이너로 전달할 때는 POSIX 슬래시(`/mnt/d/cody/e1-1` 또는 `${PWD}`)로 변환해야 하며, Windows 드라이브(NTFS)에서는 Linux 권한 비트(uid/gid)가 고정되므로 순수 권한 실습은 Linux ext4 영역(`~`)에서 수행해야 합니다.
 
 ```bash
 # 1) 현재 작업 경로 확인 (pwd)
@@ -152,9 +197,14 @@ mkdir -p ~/practice/test_dir && cd ~/practice/test_dir
 touch sample.txt
 echo "Workstation Lab: Linux CLI and Permissions" > sample.txt
 cat sample.txt
+Workstation Lab: Linux CLI and Permissions
 
 # 5) 숨김 파일 포함 상세 목록 확인 (ls -la)
 ls -la
+total 12
+drwxr-xr-x 2 ksh ksh 4096 Nov  2 15:30 .
+drwxr-xr-x 3 ksh ksh 4096 Nov  2 15:30 ..
+-rw-r--r-- 1 ksh ksh   43 Nov  2 15:30 sample.txt
 
 # 6) 파일 복사 (cp)
 cp sample.txt sample_copy.txt
@@ -185,6 +235,14 @@ rm renamed.txt
 >   - **`755`** = User `rwx (4+2+1=7)`, Group `r-x (4+0+1=5)`, Others `r-x (4+0+1=5)`
 >   - **`644`** = User `rw- (4+2+0=6)`, Group `r-- (4+0+0=4)`, Others `r-- (4+0+0=4)`
 > - **디렉토리에서 `x`의 의미**: 파일의 `x`는 바이너리/스크립트 실행을 뜻하지만, 디렉토리의 `x`는 **디렉토리 내부로 진입(`cd`)하고 메타데이터를 탐색할 수 있는 접근 권한**을 뜻합니다.
+> - **실제 파일 종류별 권장 권한**:
+>   - **`600` (소유자 읽기/쓰기만)**: DB 비밀번호 파일, 개인 비밀키(`id_rsa`), `.env` 등 보안 민감 파일.
+>   - **`644` (소유자 쓰기, 전체 읽기)**: 일반 웹 정적 문서(`index.html`), 공개 라이브러리 소스코드.
+>   - **`755` (소유자 쓰기/실행, 전체 읽기/실행)**: 일반 실행 파일, CLI 도구, 디렉토리.
+> - **[심화] 특수 권한 개념 요약**:
+>   - **SUID (`4000`, `rws------`)**: 실행 시 소유자 권한으로 실행 (예: `passwd`).
+>   - **SGID (`2000`, `---rws---`)**: 실행 시 그룹 권한을 상속받거나 디렉토리 내 생성 파일의 그룹 유지.
+>   - **Sticky Bit (`1000`, `------rwt`)**: 누구나 쓰기 가능하나 파일 삭제는 작성자 본인만 가능 (예: `/tmp`).
 
 #### 1) 파일 권한 변경 (`sample.txt` : 644 ➔ 600)
 ```bash
@@ -227,16 +285,38 @@ drwx------ 2 ksh ksh 4096 Nov  2 15:28 test_dir
 
 ## 7. [3단계] Docker 기본 운영 및 컨테이너 생명주기
 
-### 7.1 `hello-world` 및 기본 운영 실습
+### 7.1 `hello-world` 실행 원문 로그 및 기본 운영 실습
 Docker 레지스트리(Docker Hub)로부터 이미지를 자동으로 pull하고, 격리된 컨테이너를 생성/실행하여 스트리밍 로그를 출력한 뒤 정상 종료(`Exited (0)`)되는 기본 사이클을 검증했습니다.
 
 ```bash
 # 1) hello-world 컨테이너 실행
-docker run --name hello-test hello-world
+$ docker run --name hello-test hello-world
 
-# 2) 실행 로그 확인
-docker logs hello-test
+# 2) 실행 로그 원문 출력 (docker logs hello-test)
+$ docker logs hello-test
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
 ```
+
 ![Docker 기본 운영 로그](pictures/docker_operation.png)
 *▲ 그림 3: hello-world 실행 및 이미지 다운로드 로그*
 
@@ -251,9 +331,10 @@ docker logs hello-test
 docker run -it --name ubuntu-test ubuntu /bin/bash
 
 # 컨테이너 내부 환경 검증
-uname -a
-ls -la
-exit
+root@a1b2c3d4e5f6:/# uname -a
+Linux a1b2c3d4e5f6 6.18.54.1-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC x86_64 x86_64 x86_64 GNU/Linux
+root@a1b2c3d4e5f6:/# ls -la
+root@a1b2c3d4e5f6:/# exit
 ```
 ![우분투 컨테이너 대화형 진입](pictures/docker_lifecycle.png)
 *▲ 그림 5: ubuntu 컨테이너 대화형 진입 및 독립 Linux 환경 확인*
@@ -261,11 +342,34 @@ exit
 ![docker stats 및 docker ps](pictures/docker_stats&docker_ps.png)
 *▲ 그림 6: `docker stats --no-stream` 및 `docker ps -a` 컨테이너 상태 모니터링*
 
-> 💡 **생명주기 제어 개념 분석**:
+> 💡 **생명주기 제어 및 롤링 업데이트 개념 분석**:
 > - **Foreground(`-it`) vs Daemon(`-d`)**: 포그라운드 방식은 터미널 표준 입출력 세션에 종속되어 메인 프로세스(PID 1)가 끝나면 컨테이너도 중지됩니다. 반면 데몬(`-d`) 모드는 백그라운드 서비스 프로세스로 격리 구동됩니다.
 > - **`attach` vs `exec`**:
 >   - `docker attach <컨테이너>`: 이미 구동 중인 컨테이너의 메인(PID 1) 표준 입출력 스트림에 직접 연결합니다. 여기서 `exit`를 누르면 메인 프로세스가 강제 종료되어 컨테이너가 죽습니다.
 >   - `docker exec -it <컨테이너> <명령>`: 실행 중인 컨테이너 네임스페이스 내부에 **새로운 독립 보조 프로세스(예: `/bin/bash`)를 분기(fork)**하여 진입합니다. 여기서 `exit`를 눌러도 메인 프로세스에 아무런 영향을 주지 않아 컨테이너가 정상 유지됩니다.
+> - **이미지 변경 ➔ 컨테이너 롤링 업데이트 절차**:
+>   1. 소스 수정 후 신규 이미지 빌드: `docker build -t my-web:2.0 .`
+>   2. 임시 신규 컨테이너 가동 및 헬스체크 확인 후 기존 컨테이너 중지/삭제: `docker stop my-web:1.0 && docker rm my-web:1.0`
+>   3. 새 컨테이너를 본 서비스 포트로 바인딩: `docker run -d -p 8080:80 --name my-web my-web:2.0` (또는 `docker compose up -d --build`로 무중단에 준하는 자동 갱신).
+
+---
+
+### 7.3 이미지 및 컨테이너 정리(Clean-up) 운영 명령어
+실습 중 누적된 사용하지 않는 컨테이너와 댕글링(dangling) 이미지를 정리하는 운영 표준 절차입니다:
+
+```bash
+# 1) 특정 중지된 컨테이너 삭제
+$ docker rm hello-test ubuntu-test
+
+# 2) 특정 불필요 이미지 삭제
+$ docker rmi hello-world
+
+# 3) 사용하지 않는 컨테이너, 네트워크, 댕글링 이미지를 일괄 청소
+$ docker system prune -f
+Deleted Containers:
+42cd06ea601a...
+Total reclaimed space: 15.4MB
+```
 
 ---
 
@@ -298,6 +402,14 @@ CMD ["nginx", "-g", "daemon off;"]
 > 2. **메타데이터 및 환경 변수 주입 (`LABEL`, `ENV`)**: `LABEL`을 통한 소유자/버전 명시와 `ENV APP_ENV=production` 환경변수 설정을 통해 런타임 환경 분리 기반 마련.
 > 3. **애플리케이션 소스코드 교체 (`COPY`)**: 기본 Nginx index 페이지 대신 프로젝트 고유의 스타일과 배지를 포함한 `app/index.html`을 컨테이너 웹 루트(`/usr/share/nginx/html/index.html`)에 정확히 패키징함.
 
+> 🛠️ **Dockerfile 빌드 실패 시 진단 에러 로그 예시 및 대응 절차**:
+> - **에러 1: `COPY failed: file not found in build context or excluded by .dockerignore`**
+>   - *원인*: 빌드 컨텍스트(`.` 현재 폴더)에 `app/index.html`이 없거나 경로 오타 발생.
+>   - *대응*: `ls -l app/index.html`로 소스 존재 여부를 확인하고, Dockerfile 내의 `COPY` 상대 경로를 컨텍스트 기준으로 교정.
+> - **에러 2: `failed to solve with frontend dockerfile.v0: failed to create LLB definition: unknown instruction: 'EOF'`**
+>   - *원인*: 터미널 스크립트의 heredoc 기호(`'EOF' > Dockerfile`)가 Dockerfile 본문에 잘못 복사됨.
+>   - *대응*: Dockerfile 상단/하단의 비문법 텍스트를 제거하고 순수 지시어(`FROM`, `LABEL` 등)만 남겨 저장 후 재빌드.
+
 | Dockerfile 생성 확인 | Dockerfile 내용 확인 (`cat`) |
 | :---: | :---: |
 | ![Dockerfile 생성](pictures/Dockerfile_create.png) | ![cat Dockerfile](pictures/cat_Dockerfile.png) |
@@ -326,11 +438,16 @@ docker run -d -p 8081:80 --name web-port-8081 my-custom-nginx:1.0
 
 ---
 
-### 8.3 포트 매핑 접속 증명
+### 8.3 포트 매핑 접속 증명 및 네트워크 모드 비교
 
-> 💡 **포트 매핑(Port Mapping)이 필요한 이유**:
-> 도커 컨테이너는 호스트 OS 내부의 격리된 네트워크 네임스페이스(`veth` 가상 이더넷)와 전용 사설 IP(예: `172.17.0.x`)를 할당받습니다. 따라서 호스트 머신 외부나 일반 브라우저에서는 컨테이너 내부 사설망으로 직접 접근할 수 없습니다.  
-> `-p <host_port>:<container_port>` 옵션은 Linux 커널의 `iptables NAT(Network Address Translation)` 규칙을 구성하여, 호스트의 특정 포트로 들어오는 패킷을 컨테이너 내부 포트로 정확히 포워딩해 주는 역할을 합니다.
+> 💡 **포트 매핑(Port Mapping) 원리 및 네트워크 모드 비교**:
+> - **포트 매핑의 필요성**: 도커 컨테이너는 격리된 네트워크 네임스페이스(`veth`)와 전용 사설 IP(`172.17.0.x`)를 가집니다. `-p <host_port>:<container_port>`는 Linux 커널의 `iptables NAT` 규칙을 생성하여 호스트 포트로 유입된 요청을 컨테이너 포트로 포워딩합니다.
+> - **`bridge` vs `host` 모드 비교**:
+>   - **`bridge` 모드 (기본값)**: 컨테이너가 가상 브릿지에 연결되어 완전 격리된 네트워크를 갖습니다. 포트 충돌을 회피할 수 있고 포트 매핑(`-p`)이 필수적이며 보안성이 우수합니다.
+>   - **`host` 모드 (`--net=host`)**: 컨테이너가 호스트의 네트워크 네임스페이스를 그대로 공유합니다. 포트 매핑 오버헤드가 없어 성능이 높으나, 컨테이너가 점유한 포트가 호스트와 직접 충돌하고 호스트 방화벽에 완전히 노출됩니다.
+> - **외부(동일 LAN 내 다른 PC/모바일) 접속 방법 및 제한사항**:
+>   - 호스트 PC의 로컬 IP(예: `192.168.0.x`)를 확인한 뒤, 외부 기기 브라우저에서 `http://192.168.0.x:8080`으로 접속합니다.
+>   - *제한사항*: Windows Defender 방화벽에서 포트 8080 인바운드 규칙이 허용되어 있어야 하며, 공용 Wi-Fi의 AP 격리(AP Isolation) 정책이 켜져 있는 환경에서는 기기 간 직접 통신이 차단될 수 있습니다.
 
 | CLI curl HTTP 접속 응답 검증 | **브라우저 주소창(URL) 포함 접속 증빙** |
 | :---: | :---: |
@@ -368,7 +485,7 @@ curl http://localhost:8082 | grep mount-check
 
 ---
 
-### 9.2 Docker Named Volume 데이터 영속성 검증
+### 9.2 Docker Named Volume 데이터 영속성 검증 및 백업/복원 가이드
 
 컨테이너가 완전히 삭제(`docker rm -f`)되더라도, 도커 엔진이 관리하는 전용 볼륨에 저장된 데이터는 영구적으로 안전하게 보존됨을 실증했습니다.
 
@@ -394,6 +511,19 @@ docker run -d --name worker-2 -v my-persistent-volume:/data ubuntu sleep infinit
 docker exec worker-2 cat /data/persistence_log.txt
 ```
 
+> 💾 **Docker 볼륨 기반 백업 및 복원(Backup & Restore) 표준 절차**:
+> - **볼륨 데이터를 tar 파일로 압축 백업**:
+>   ```bash
+>   # 임시 컨테이너를 구동하여 볼륨(/data)을 호스트 현재 디렉토리(/backup)의 tar 파일로 덤프
+>   docker run --rm -v my-persistent-volume:/data -v "$(pwd)":/backup ubuntu tar cvf /backup/volume_backup.tar -C /data .
+>   ```
+> - **새로운 볼륨에 tar 백업 데이터 복원**:
+>   ```bash
+>   # 신규 볼륨 생성 후 tar 아카이브를 풀어 복원
+>   docker volume create my-restored-volume
+>   docker run --rm -v my-restored-volume:/data -v "$(pwd)":/backup ubuntu tar xvf /backup/volume_backup.tar -C /data
+>   ```
+
 | 전용 Named Volume 생성 및 조회 | worker-1 데이터 작성 및 기록 확인 | 컨테이너 삭제 후 worker-2 데이터 보존 확인 |
 | :---: | :---: | :---: |
 | ![볼륨 생성 조회](pictures/전용_named_volume_생성및조회.png) | ![worker-1 데이터 작성](pictures/worker-1컨테이너생성&영속성_데이터파일작성&데이터정상기록확인.png) | ![worker-2 데이터 보존 확인](pictures/이전컨테이너삭제및신규컨테이너에서_데이터보존확인.png) |
@@ -402,16 +532,35 @@ docker exec worker-2 cat /data/persistence_log.txt
 
 ## 10. [6단계] Git 환경 설정 & GitHub 원격 연동
 
-### 10.1 사용자 정보 및 기본 브랜치 설정
+### 10.1 사용자 정보, 기본 브랜치 및 원격 저장소(`git remote -v`) 확인
 ```bash
-# 저장소 로컬 레벨 사용자 및 기본 브랜치 등록
+# 1) 저장소 로컬 레벨 사용자 및 기본 브랜치 등록
 git config --local user.name "tqetri-ctrl"
 git config --local user.email "tqetri@gmail.com"
 git config --local init.defaultBranch main
 
-# 설정 내역 조회
-git config --local --list
+# 2) 설정 내역 조회
+$ git config --local --list
+core.repositoryformatversion=0
+core.filemode=false
+core.bare=false
+core.logallrefupdates=true
+core.symlinks=false
+core.ignorecase=true
+remote.origin.url=git@github.com:tqetri-ctrl/e1-1.git
+remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
+branch.main.remote=origin
+branch.main.merge=refs/heads/main
+branch.main.vscode-merge-base=origin/main
+user.name=tqetri-ctrl
+user.email=tqetri@gmail.com
+
+# 3) 원격 저장소 URL 확인 (git remote -v)
+$ git remote -v
+origin	git@github.com:tqetri-ctrl/e1-1.git (fetch)
+origin	git@github.com:tqetri-ctrl/e1-1.git (push)
 ```
+
 | Git 설정 내역 (`git config`) | VS Code 연동 상태 | GitHub 원격 저장소 동기화 |
 | :---: | :---: | :---: |
 | ![Git Config List](pictures/git_config_list.png) | ![Git 연동 상태](pictures/git_연동상태.png) | ![GitHub 원격 연동](pictures/github_연동.png) |
@@ -427,13 +576,31 @@ git config --local --list
 
 ### 📌 [트러블슈팅 1] WSL Windows 마운트 드라이브(`/mnt/d/...`) 상의 `chmod` 권한 미반영 현상 (실제 발생 사례)
 
-- **1. 문제 현상 (Symptom)**:  
+- **1. 문제 현상 및 실제 에러 로그 (Symptom & Raw Log)**:  
   WSL2 Ubuntu 터미널에서 Windows 파일시스템이 마운트된 `/mnt/d/cody/e1-1/practice/test_dir` 경로에서 `chmod 600 sample.txt`를 실행했으나, `ls -l` 확인 결과 파일 권한이 여전히 `-rwxrwxrwx (777)`로 고정되어 권한 변경이 전혀 적용되지 않는 현상이 발생함.
+  ```bash
+  ksh@ksh:/mnt/d/cody/e1-1/practice/test_dir$ chmod 600 sample.txt
+  ksh@ksh:/mnt/d/cody/e1-1/practice/test_dir$ ls -l sample.txt
+  -rwxrwxrwx 1 ksh ksh 43 Nov  2 15:28 sample.txt
+  ksh@ksh:/mnt/d/cody/e1-1/practice/test_dir$ chmod 755 sample.txt
+  ksh@ksh:/mnt/d/cody/e1-1/practice/test_dir$ ls -l sample.txt
+  -rwxrwxrwx 1 ksh ksh 43 Nov  2 15:28 sample.txt
+  ```
 - **2. 원인 가설 (Hypothesis)**:  
   `/mnt/c/`, `/mnt/d/` 경로는 Windows의 NTFS 파일시스템이 WSL의 DrvFs 드라이버를 통해 마운트된 가상 영역이다. NTFS는 Linux POSIX 권한 비트(`r/w/x`, 8진수 퍼미션) 메타데이터를 지원하지 않으므로, WSL이 Windows 프로그램과의 권한 호환성을 위해 모든 파일 권한을 기본 `0777 (-rwxrwxrwx)`로 강제 고정하기 때문일 것으로 추정함.
 - **3. 원인 확인 과정 (Verification)**:  
   - `mount | grep /mnt/d` 명령어로 마운트 속성을 확인하여 POSIX 메타데이터(`metadata`) 옵션이 누락된 단순 DrvFs 마운트 상태임을 확인.
-  - 가설 검증을 위해 순수 Linux ext4 가상 디스크 영역인 사용자 홈 디렉토리(`~/practice/test_dir`)로 이동 후 동일하게 `chmod 600 sample.txt`를 실행한 결과, `-rw-------`로 권한이 즉시 정상 변경되는 것을 대조 확인.
+  - 가설 검증을 위해 순수 Linux ext4 가상 디스크 영역인 사용자 홈 디렉토리(`~/practice/test_dir`)로 이동 후 동일하게 `chmod 600 sample.txt`를 실행한 결과, `-rw-------`로 권한이 즉시 정상 변경되는 것을 대조 확인:
+    ```bash
+    ksh@ksh:~$ cd ~
+    ksh@ksh:~$ mkdir -p practice/test_dir && cd practice/test_dir
+    ksh@ksh:~/practice/test_dir$ echo "test" > sample.txt
+    ksh@ksh:~/practice/test_dir$ ls -l sample.txt
+    -rw-r--r-- 1 ksh ksh 5 Nov  2 15:35 sample.txt
+    ksh@ksh:~/practice/test_dir$ chmod 600 sample.txt
+    ksh@ksh:~/practice/test_dir$ ls -l sample.txt
+    -rw------- 1 ksh ksh 5 Nov  2 15:35 sample.txt
+    ```
 - **4. 해결 및 대안 (Resolution)**:  
   - **해결 조치**: 과제 평가 항목인 리눅스 권한 실습(chmod 600, 700 및 r/w/x 해석)은 Linux 네이티브 ext4 영역인 `~/practice/`에서 수행하여 완벽한 권한 변경 전/후 로그 및 증빙 이미지를 확보함.
   - **작업 분리**: VS Code 및 Git과의 호스트 파일 공유가 필요한 소스코드(Dockerfile, app/)는 `/mnt/d/cody/e1-1`에서 관리하고, 리눅스 시스템 고유 권한 실습은 `~`에서 진행하도록 환경을 분리하여 안정적인 워크플로우를 확립함.
@@ -442,8 +609,18 @@ git config --local --list
 
 ### 📌 [트러블슈팅 2] Windows PowerShell 환경에서의 리눅스 표준 명령어(`touch`) 미인식 오류
 
-- **1. 문제 현상 (Symptom)**:  
-  초기 호스트 터미널(PowerShell)에서 `touch sample.txt` 실행 시 `touch : 'touch' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다` 오류 발생.
+- **1. 문제 현상 및 실제 에러 로그 (Symptom & Raw Log)**:  
+  초기 호스트 터미널(PowerShell)에서 `touch sample.txt` 실행 시 명령어를 찾을 수 없다는 오류 발생:
+  ```text
+  PS D:\cody\e1-1> touch sample.txt
+  touch : 'touch' 용어가 cmdlet, 함수, 스크립트 파일 또는 실행할 수 있는 프로그램 이름으로 인식되지 않습니다.
+  이름이 정확한지 확인하고 경로가 포함된 경우 경로가 올바른지 검증한 다음 다시 시도하십시오.
+  위치 줄:1 문자:1
+  + touch sample.txt
+  + ~~~~~
+      + CategoryInfo          : ObjectNotFound: (touch:String) [], CommandNotFoundException
+      + FullyQualifiedErrorId : CommandNotFoundException
+  ```
 - **2. 원인 가설 (Hypothesis)**:  
   `touch`, `ls -la`, `chmod` 등은 Linux/Unix 계열 표준 CLI 바이너리로, Windows PowerShell 런타임에는 기본 내장되어 있지 않기 때문임.
 - **3. 원인 확인 과정 (Verification)**:  
@@ -455,14 +632,33 @@ git config --local --list
 
 ### 📌 [트러블슈팅 3] Bash 특수문자 히스토리 확장 에러 (`-bash: !-: event not found`)
 
-- **1. 문제 현상 (Symptom)**:  
-  바인드 마운트 실시간 검증을 위해 `echo "<!-- live update --> <p id='mount-check'>⚡ 바인드 마운트 실시간 업데이트 반영 성공!</p>" >> app/index.html` 실행 시 `-bash: !-: event not found` 오류가 발생하며 파일 수정 실패.
+- **1. 문제 현상 및 실제 에러 로그 (Symptom & Raw Log)**:  
+  바인드 마운트 실시간 검증을 위해 파일 수정 명령 실행 시 이벤트 참조 오류 발생:
+  ```bash
+  ksh@ksh:/mnt/d/cody/e1-1$ echo "<!-- live update --> <p id='mount-check'>⚡ 바인드 마운트 실시간 업데이트 반영 성공!</p>" >> app/index.html
+  -bash: !-: event not found
+  ```
 - **2. 원인 가설 (Hypothesis)**:  
   Bash 쉘에서 큰따옴표(`"..."`) 안에 들어간 느낌표(`!`)를 이전 명령어를 참조하는 **히스토리 확장(History Expansion, `!-`)** 특수 기호로 해석했기 때문임.
 - **3. 원인 확인 과정 (Verification)**:  
-  `echo "성공!"` 테스트 시 동일한 에러 발생 확인.
+  `echo "성공!"` 테스트 시 동일한 `-bash: !: event not found` 에러 발생 확인.
 - **4. 해결 및 대안 (Resolution)**:  
   히스토리 확장이 비활성화되는 **작은따옴표(`'...'`)**로 문자열을 감싸 `echo '<!-- live update --> <p id="mount-check">⚡ 바인드 마운트 실시간 업데이트 반영 성공!</p>' >> app/index.html` 형태로 수정 실행하여 정상 반영 완료.
+
+---
+
+### 📌 [트러블슈팅 4] Docker 컨테이너 실행 시 로컬 포트 충돌 사전 진단 및 해결
+
+- **1. 문제 현상 및 시뮬레이션 (Symptom)**:  
+  `docker run -d -p 8080:80 ...` 실행 시 포트 충돌 발생:
+  ```text
+  Error response from daemon: Ports are not available: exposing port TCP 0.0.0.0:8080 failed: listen tcp 0.0.0.0:8080: bind: address already in use
+  ```
+- **2. 원인 및 확인 과정 (Verification)**:  
+  - **Windows 진단**: `netstat -ano | findstr :8080` (점유 PID 확인)
+  - **Linux / WSL 진단**: `lsof -i :8080` 또는 `ss -tulpn | grep :8080`
+- **3. 해결 및 대안 (Resolution)**:  
+  기존 프로세스 또는 이전 컨테이너를 `docker stop <ID>`로 중지하거나, 호스트 포트를 `8081` 등 비어있는 포트로 매핑(`-p 8081:80`)하여 충돌 회피.
 
 ---
 
@@ -491,6 +687,9 @@ services:
 > **💡 배움 포인트: 컨테이너 실행 명령이 "문서화된 실행 설정"으로 바뀌는 이유**:
 > - 복잡한 포트 바인딩, 빌드 컨텍스트, 환경 변수 주입 명령을 매번 터미널에 오타 없이 외워 치는 인적 오류(Human Error)를 원천 제거합니다.
 > - 서비스 정의가 Git 저장소에 커밋되어 팀원 누구나 `docker compose up -d` 명령어 단 하나로 동일한 운영 상태를 즉시 재현할 수 있습니다.
+> - **[주의사항] Compose 재현 시 예상 충돌 사례 및 우회 방법**:
+>   - *포트 충돌*: 호스트에 이미 8085 포트가 점유되어 있으면 `bind: address already in use` 발생 ➔ `.env` 파일에서 `HOST_PORT=8086` 등으로 변경하여 즉시 우회.
+>   - *컨테이너명 충돌*: 동일한 `container_name: compose-web-server`가 이미 존재하면 실패 ➔ `docker compose -p <프로젝트명> up -d`로 네임스페이스를 분리하거나 기존 컨테이너를 정리(`docker rm -f`)하여 해결.
 
 | Compose 빌드 및 백그라운드 구동 | Compose 서비스 상태 조회 (`ps`) |
 | :---: | :---: |
