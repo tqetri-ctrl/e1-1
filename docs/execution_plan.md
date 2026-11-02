@@ -8,7 +8,8 @@
 
 ```mermaid
 flowchart TD
-    Step1["1단계: 개발 환경 구성 & 도구 점검<br/>(Docker 설치/실행 및 Git 점검)"] --> Step2["2단계: 리눅스 터미널 조작 & 파일 권한 실습<br/>(기본 명령어 9종 & r/w/x 전후 비교)"]
+    Step0["0단계: 사전 환경 구성 & 필수 의존성 설치<br/>(BIOS 가상화, WSL2/Ubuntu, Docker 엔진, VSCode 확장)"] --> Step1["1단계: 개발 환경 구성 & 도구 점검<br/>(Docker 설치/실행 및 Git 점검)"]
+    Step1 --> Step2["2단계: 리눅스 터미널 조작 & 파일 권한 실습<br/>(기본 명령어 9종 & r/w/x 전후 비교)"]
     Step2 --> Step3["3단계: Docker 기본 운영 & 컨테이너 생명주기<br/>(hello-world, ubuntu 대화형, attach/exec 차이)"]
     Step3 --> Step4["4단계: 커스텀 Dockerfile 웹 서버 제작 & 포트 매핑<br/>(app 소스 작성, build, 브라우저/curl 접속 검증)"]
     Step4 --> Step5["5단계: 바인드 마운트 & 볼륨 데이터 영속성 검증<br/>(실시간 반영 확인, 컨테이너 삭제 후 데이터 유지 증명)"]
@@ -20,6 +21,79 @@ flowchart TD
 ---
 
 ## 2. 단계별 상세 수행 계획 및 매뉴얼
+
+### [0단계] 사전 환경 구성 및 필수 의존성 세팅 (Prerequisites & Base Setup)
+> **핵심 목적**: 본 실습을 시작하기 전, 호스트 OS(Windows)에서 Docker와 리눅스 CLI 환경이 정상 구동되기 위한 기반 인프라를 완벽하게 준비합니다.
+
+1. **하드웨어 가상화(Virtualization) 활성화 확인**
+   - **확인 방법**: 작업 관리자(`Ctrl + Shift + Esc`) ➔ [성능] 탭 ➔ [CPU] ➔ 우측 하단 **가상화: 사용(Enabled)** 여부 확인.
+   - *미사용 시 조치*: PC 재부팅 후 BIOS/UEFI 진입(F2 또는 Del 키) ➔ Intel VT-x 또는 AMD-V(SVM) 옵션을 `Enabled`로 변경.
+
+2. **Windows 기능(가상 머신 플랫폼 & WSL) 활성화**
+   - 관리자 권한 PowerShell에서 아래 명령어를 실행하여 Windows 필수 컴포넌트를 활성화합니다:
+     ```powershell
+     # 1) 가상 머신 플랫폼 활성화
+     dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+
+     # 2) Linux용 Windows 하위 시스템(WSL) 활성화
+     dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+     ```
+   - 설정 적용을 위해 필요 시 시스템을 재부팅합니다.
+
+3. **WSL2 설치 및 Linux 배포판(Ubuntu) 구성**
+   - 현재 시스템에서 `wsl --list --verbose` 실행 시 배포판이 없다면 다음 명령으로 WSL2 커널과 Ubuntu를 설치합니다:
+     ```powershell
+     # WSL2 최신 커널 업데이트 및 기본 버전 2 설정
+     wsl --update
+     wsl --set-default-version 2
+
+     # Ubuntu 배포판 설치
+     wsl --install -d Ubuntu
+     ```
+   - 설치 완료 후 실행되는 터미널 창에서 초기 사용자 계정(Username)과 비밀번호(Password)를 생성합니다.
+   - 정상 설치 확인:
+     ```powershell
+     wsl -l -v
+     # 출력 예시: NAME: Ubuntu, STATE: Running/Stopped, VERSION: 2
+     ```
+
+4. **Docker 런타임 설치 및 환경 설정 (환경별 최적 경로 선택)**
+   - **옵션 A: Docker Desktop for Windows (표준 개발 환경)**
+     1. 공식 사이트(https://www.docker.com/products/docker-desktop/)에서 인스톨러 다운로드 및 실행.
+     2. 설치 시 **"Use WSL 2 instead of Hyper-V (recommended)"** 체크 확인.
+     3. 설치 완료 후 Docker Desktop 실행 ➔ 상단 톱니바퀴 [Settings]:
+        - **[General]**: `Use the WSL 2 based engine` 체크 확인.
+        - **[Resources] ➔ [WSL integration]**: `Enable integration with my default WSL distro` 체크 및 `Ubuntu` 토글 ON.
+     4. 시스템 환경변수 `PATH`에 `C:\Program Files\Docker\Docker\resources\bin`이 자동 등록되어 PowerShell 및 CMD에서도 `docker` 명령어를 바로 사용할 수 있습니다.
+   - **옵션 B: OrbStack (서울 캠퍼스 정책 / sudo 제한 환경)**
+     1. 서울 캠퍼스 PC 또는 sudo 권한 제약이 있는 환경의 경우 제공되는 가이드에 따라 **OrbStack** 설치.
+     2. OrbStack 실행 시 백그라운드에서 Docker 엔진 소켓이 자동 구동되며, 별도의 복잡한 데몬 설정 없이 일반 사용자 권한으로 `docker` 명령어를 직접 사용 가능.
+   - **옵션 C: WSL2 Ubuntu 내부 직접 Docker Engine(docker-ce) 설치 (Desktop 미사용 대안)**
+     - Docker Desktop 라이선스 또는 설치 제약이 있는 경우, WSL Ubuntu 내부에서 아래 명령으로 직접 docker-ce 구동:
+       ```bash
+       sudo apt-get update
+       sudo apt-get install -y ca-certificates curl gnupg
+       sudo install -m 0755 -d /etc/apt/keyrings
+       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+       echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+       sudo apt-get update && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+       sudo usermod -aG docker $USER
+       sudo service docker start
+       ```
+
+5. **터미널 & IDE(VS Code) 개발 도구 구성**
+   - **터미널 추천**: **Windows Terminal** 설치 (PowerShell, WSL Ubuntu, Git Bash 탭 분할 및 편리한 UTF-8 지원).
+   - **VS Code 필수 확장(Extensions) 설치**:
+     - `WSL` (ms-vscode-remote.remote-wsl): VS Code를 WSL Ubuntu 환경과 원격 연결.
+     - `Docker` (ms-azuretools.vscode-docker): 컨테이너, 이미지, 볼륨을 GUI로 시각화 및 관리.
+     - `Dev Containers` (ms-vscode-remote.remote-containers): 컨테이너 내부 개발 환경 제공.
+   - **Git for Windows 점검**: 현재 이미 설치된 Git(`git version 2.52.0`)이 정상 동작함을 확인.
+
+6. **네트워크 및 방화벽 사전 점검**
+   - 포트 매핑 실습(8080, 8081, 8082 등) 시 Windows 보안 경고 팝업이 뜨면 **"액세스 허용(개인 네트워크)"**을 반드시 승인.
+   - 프록시나 사내망 VPN 사용 시 Docker 이미지 풀(`docker pull`)이 차단되지 않는지 네트워크 연결 상태 확인.
+
+---
 
 ### [1단계] 개발 환경 구성 및 도구 점검
 - **목표**: 터미널 환경 확인, Docker 데몬 구동 및 필수 도구 버전 점검.
@@ -342,6 +416,9 @@ flowchart TD
 
 | 구분 | 필수 요구 항목 | 포함 여부 | 비고 |
 | :--- | :--- | :---: | :--- |
+| **사전환경** | BIOS 가상화 활성화 & Windows 가상머신 플랫폼/WSL2 활성화 | [ ] | 0단계 |
+| **사전환경** | Docker Desktop (또는 OrbStack) 설치 및 데몬 구동 연동 | [ ] | 0단계 |
+| **사전환경** | VS Code 필수 확장 (WSL, Docker, Dev Containers) 설치 | [ ] | 0단계 |
 | **문서** | 프로젝트 개요 & 실행 환경(OS, Docker, Git 버전) | [ ] | README.md 상단 |
 | **문서** | 수행 항목 체크리스트 | [ ] | 테이블/체크박스 |
 | **터미널** | 현재위치, 목록(숨김포함), 이동, 생성, 복사, 이름변경, 삭제, 내용확인, 빈파일 | [ ] | 9종 명령어 로그 |
