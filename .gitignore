@@ -1,0 +1,22 @@
+# 운영체제 캐시 및 메타데이터
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE 및 에디터 설정
+.vscode/*
+!.vscode/settings.json
+.idea/
+
+# 보안 및 환경 변수 파일 (절대 커밋 금지)
+.env
+.env.*
+*.pem
+*.key
+id_rsa*
+
+# 임시 로그 및 빌드 부산물
+*.log
+temp/
+practice/
