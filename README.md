@@ -36,7 +36,66 @@
 
 ---
 
-## 3. 수행 항목 체크리스트 (Task Checklist)
+## 3. 프로젝트 디렉토리 구조 및 역할 (Project Structure)
+
+평가자가 저장소의 형상을 한눈에 파악하고 재현할 수 있도록, 프로젝트 루트의 전체 파일 트리(`tree` / `ls -R` 기준)와 각 디렉토리 및 파일의 구성 기준·역할을 명시합니다.
+
+### 3.1 디렉토리 트리 (Directory Tree)
+```text
+e1-1/
+├── app/                                    # [웹 애플리케이션 소스코드 디렉토리]
+│   └── index.html                          # 커스텀 웹 서버 메인 HTML 페이지 (바인드 마운트 실시간 동기화 대상)
+├── docs/                                   # [프로젝트 기술 및 계획 문서 디렉토리]
+│   ├── mission.md                          # 과제 원본 요구사항 및 미션 명세서
+│   └── execution_plan.md                   # 단계별 상세 수행 계획서, 사전 환경 준비 및 트러블슈팅 매뉴얼
+├── pictures/                               # [미션 수행 결과 증빙 스크린샷 및 로그 수집 디렉토리]
+│   ├── *.png (총 44개)                     # CLI 실행 로그, 브라우저 주소창 접속 화면, GUI 상태 증빙 캡처
+│   ├── docker_info.md                      # docker info 전체 출력 결과 전문 텍스트 로그
+│   └── project_structure.png               # 프로젝트 디렉토리 구조 확인 캡처
+├── practice/                               # [리눅스 터미널 기본 조작 및 파일 권한 실습 샌드박스]
+│   └── test_dir/
+│       └── sample.txt                      # 기본 CLI(touch, echo, cp, mv, rm) 및 권한(chmod) 실습용 파일
+├── .env                                    # Docker Compose 런타임 환경 변수 설정 파일 (호스트 포트 및 모드 정의)
+├── .env.example                            # 환경 변수 템플릿 파일 (Git 버전 관리 및 팀원 공유용)
+├── .gitignore                              # Git 형상 관리 제외 목록 (환경변수, 비밀키, OS 캐시 등 민감정보 차단)
+├── Dockerfile                              # Nginx Alpine 기반 커스텀 웹 서버 빌드 명세서 (IaC)
+├── docker-compose.yml                      # 단일/멀티 컨테이너 선언적 오케스트레이션 정의 파일 (보너스 과제)
+└── README.md                               # 최종 프로젝트 기술 문서 및 평가 제출 보고서
+```
+
+![프로젝트 디렉토리 구조](pictures/project_structure.png)
+*▲ 그림 2: 프로젝트 루트 디렉토리 트리 및 파일 구성 캡처*
+
+### 3.2 디렉토리 및 파일별 세부 역할 (Role Description)
+
+| 경로 (Path) | 종류 | 주요 역할 및 설명 |
+| :--- | :---: | :--- |
+| **`app/`** | 디렉토리 | 정적 웹 애플리케이션 소스코드를 보관하는 디렉토리로, Dockerfile의 `COPY` 소스이자 바인드 마운트의 호스트 마운트 포인트입니다. |
+| **`app/index.html`** | 파일 | Nginx 기본 Welcome 페이지를 대체하는 커스텀 웹 페이지로, 바인드 마운트 실시간 수정 반영을 검증하는 대상 파일입니다. |
+| **`docs/`** | 디렉토리 | 프로젝트 요구사항 명세서(`mission.md`)와 단계별 수행 계획서(`execution_plan.md`)를 보관하는 기술 문서 디렉토리입니다. |
+| **`pictures/`** | 디렉토리 | 미션 0단계부터 7단계 및 보너스 과제까지의 모든 CLI 실행 결과, 브라우저 주소창 캡처, 시스템 상태 로그를 보관하는 증빙 디렉토리입니다. |
+| **`practice/`** | 디렉토리 | 터미널 기본 명령어(9종) 및 리눅스 파일 권한(`chmod`)을 실습하기 위해 분리한 독립 샌드박스 작업 공간입니다. |
+| **`Dockerfile`** | 파일 | 경량 Alpine Nginx 베이스 이미지에 커스텀 소스를 패키징하고 포트(80) 및 환경변수를 선언한 이미지 빌드 명세서입니다. |
+| **`docker-compose.yml`**| 파일 | 단일 웹 서버 서비스의 빌드, 포트 바인딩(8085), 환경 변수 주입을 코드로 선언하여 원클릭 오케스트레이션을 제공합니다. |
+| **`.env` / `.env.example`**| 파일 | 런타임 포트와 애플리케이션 환경을 코드와 분리하여 관리하는 환경 변수 파일 및 템플릿입니다. |
+| **`.gitignore`** | 파일 | `.env`, 개인 비밀키(`*.pem`, `id_rsa*`), OS 캐시 등 민감 자산이 원격 저장소에 커밋되지 않도록 차단하는 보안 설정 파일입니다. |
+| **`README.md`** | 파일 | 평가자가 과제 수행 전 과정과 결과 증빙, 트러블슈팅 내역을 즉시 재현·검증할 수 있는 최종 종합 기술 문서입니다. |
+
+### 3.3 디렉토리 구성 기준 및 설계 원칙 (Design Principles)
+1. **관심사의 분리 (Separation of Concerns)**:
+   - **애플리케이션 계층 (`app/`)**: 비즈니스 로직 및 정적 웹 리소스만 격리하여 보관.
+   - **인프라 명세 계층 (`Dockerfile`, `docker-compose.yml`)**: 이미지를 빌드하고 컨테이너 런타임 환경을 선언하는 코드를 분리.
+   - **문서화 계층 (`docs/`, `README.md`)**: 계획 및 최종 결과를 체계적으로 문서화.
+   - **증빙 자산 계층 (`pictures/`)**: 평가자가 신뢰할 수 있는 캡처 자료를 일원화하여 관리.
+   - **실습 샌드박스 (`practice/`)**: 순수 리눅스 명령어 및 권한 변경 실습을 격리된 공간에서 수행하여 프로젝트 핵심 파일 오염 방지.
+2. **호스트-컨테이너 간 파일 공유 최적화**:
+   - `app/` 디렉토리는 `Dockerfile`의 `COPY` 대상인 동시에, 바인드 마운트(`-v $(pwd)/app:/usr/share/nginx/html:ro`)의 호스트 볼륨으로 지정되어 로컬 수정이 컨테이너에 즉시 반영되도록 설계되었습니다.
+3. **환경 분리 및 보안성 보장**:
+   - 실제 배포 환경 포트와 모드를 담은 `.env`는 `.gitignore`로 보호하고, 구조만 담은 `.env.example`을 제공하여 민감정보 노출을 방지했습니다.
+
+---
+
+## 4. 수행 항목 체크리스트 (Task Checklist)
 
 - [x] **0단계 [사전 인프라]**: BIOS 가상화 활성화, Windows 가상 머신 플랫폼 및 WSL2 활성화
 - [x] **0단계 [도구 준비]**: WSL2 Ubuntu 배포판 설치, Docker Desktop 최신 버전 설치 및 WSL2 연동
@@ -58,7 +117,7 @@
 
 ---
 
-## 4. [0단계] 사전 환경 구성 및 인프라 구축 증빙
+## 5. [0단계] 사전 환경 구성 및 인프라 구축 증빙
 
 Windows 호스트에서 컨테이너 가상화를 안정적으로 구동하기 위한 사전 필수 컴포넌트를 모두 활성화하고 검증했습니다.
 
@@ -73,9 +132,9 @@ Windows 호스트에서 컨테이너 가상화를 안정적으로 구동하기 �
 
 ---
 
-## 5. [2단계] 리눅스 터미널 조작 및 권한 실습
+## 6. [2단계] 리눅스 터미널 조작 및 권한 실습
 
-### 5.1 터미널 기본 조작 필수 9종 로그
+### 6.1 터미널 기본 조작 필수 9종 로그
 
 > 💡 **경로 개념 정리**:
 > - **절대 경로(Absolute Path)**: 루트 디렉토리(`/`)를 기점으로 파일의 전체 고유 위치를 표현 (예: `/home/ksh/practice/test_dir/sample.txt`). 현재 디렉토리 위치와 무관하게 고정됩니다.
@@ -118,7 +177,7 @@ rm renamed.txt
 
 ---
 
-### 5.2 파일 및 디렉토리 권한(Permission) 변경 실습
+### 6.2 파일 및 디렉토리 권한(Permission) 변경 실습
 
 > 💡 **권한 체계(r/w/x 및 8진수 표기법)의 이해**:
 > - 리눅스 권한은 `소유자(User) / 소유그룹(Group) / 기타사용자(Others)`의 3개 주체로 구분됩니다.
@@ -166,9 +225,9 @@ drwx------ 2 ksh ksh 4096 Nov  2 15:28 test_dir
 
 ---
 
-## 6. [3단계] Docker 기본 운영 및 컨테이너 생명주기
+## 7. [3단계] Docker 기본 운영 및 컨테이너 생명주기
 
-### 6.1 `hello-world` 및 기본 운영 실습
+### 7.1 `hello-world` 및 기본 운영 실습
 Docker 레지스트리(Docker Hub)로부터 이미지를 자동으로 pull하고, 격리된 컨테이너를 생성/실행하여 스트리밍 로그를 출력한 뒤 정상 종료(`Exited (0)`)되는 기본 사이클을 검증했습니다.
 
 ```bash
@@ -179,14 +238,14 @@ docker run --name hello-test hello-world
 docker logs hello-test
 ```
 ![Docker 기본 운영 로그](pictures/docker_operation.png)
-*▲ 그림 2: hello-world 실행 및 이미지 다운로드 로그*
+*▲ 그림 3: hello-world 실행 및 이미지 다운로드 로그*
 
 ![Docker logs 확인](pictures/docker_logs.png)
-*▲ 그림 3: `docker logs hello-test` 정상 스트리밍 확인*
+*▲ 그림 4: `docker logs hello-test` 정상 스트리밍 확인*
 
 ---
 
-### 6.2 `ubuntu` 대화형 컨테이너 및 생명주기 분석
+### 7.2 `ubuntu` 대화형 컨테이너 및 생명주기 분석
 ```bash
 # 대화형 TTY 세션(-it)으로 우분투 내부 bash 쉘 진입
 docker run -it --name ubuntu-test ubuntu /bin/bash
@@ -197,10 +256,10 @@ ls -la
 exit
 ```
 ![우분투 컨테이너 대화형 진입](pictures/docker_lifecycle.png)
-*▲ 그림 4: ubuntu 컨테이너 대화형 진입 및 독립 Linux 환경 확인*
+*▲ 그림 5: ubuntu 컨테이너 대화형 진입 및 독립 Linux 환경 확인*
 
 ![docker stats 및 docker ps](pictures/docker_stats&docker_ps.png)
-*▲ 그림 5: `docker stats --no-stream` 및 `docker ps -a` 컨테이너 상태 모니터링*
+*▲ 그림 6: `docker stats --no-stream` 및 `docker ps -a` 컨테이너 상태 모니터링*
 
 > 💡 **생명주기 제어 개념 분석**:
 > - **Foreground(`-it`) vs Daemon(`-d`)**: 포그라운드 방식은 터미널 표준 입출력 세션에 종속되어 메인 프로세스(PID 1)가 끝나면 컨테이너도 중지됩니다. 반면 데몬(`-d`) 모드는 백그라운드 서비스 프로세스로 격리 구동됩니다.
@@ -210,9 +269,9 @@ exit
 
 ---
 
-## 7. [4단계] Dockerfile 커스텀 웹 서버 제작 및 포트 매핑
+## 8. [4단계] Dockerfile 커스텀 웹 서버 제작 및 포트 매핑
 
-### 7.1 커스텀 `Dockerfile` 소스코드 및 3대 커스텀 포인트
+### 8.1 커스텀 `Dockerfile` 소스코드 및 3대 커스텀 포인트
 ```dockerfile
 # 1. 베이스 이미지 선택: 보안성과 40MB 이하의 경량성을 갖춘 Nginx Alpine 버전 사용
 FROM nginx:alpine
@@ -245,7 +304,7 @@ CMD ["nginx", "-g", "daemon off;"]
 
 ---
 
-### 7.2 이미지 빌드 및 2개 포트 매핑 실행
+### 8.2 이미지 빌드 및 2개 포트 매핑 실행
 
 ```bash
 # 1) 커스텀 이미지 빌드
@@ -263,11 +322,11 @@ docker run -d -p 8081:80 --name web-port-8081 my-custom-nginx:1.0
 | ![Docker build custom](pictures/Docker_build_custom.png) | ![custom build docker image result](pictures/custom_build_docker_image_result.png) |
 
 ![호스트 8081 포트 매핑](pictures/호스트8081포트_컨테이너80포트로_매핑.png)
-*▲ 그림 6: 서로 다른 호스트 포트(8080, 8081)로 격리 컨테이너 2기 정상 구동*
+*▲ 그림 7: 서로 다른 호스트 포트(8080, 8081)로 격리 컨테이너 2기 정상 구동*
 
 ---
 
-### 7.3 포트 매핑 접속 증명
+### 8.3 포트 매핑 접속 증명
 
 > 💡 **포트 매핑(Port Mapping)이 필요한 이유**:
 > 도커 컨테이너는 호스트 OS 내부의 격리된 네트워크 네임스페이스(`veth` 가상 이더넷)와 전용 사설 IP(예: `172.17.0.x`)를 할당받습니다. 따라서 호스트 머신 외부나 일반 브라우저에서는 컨테이너 내부 사설망으로 직접 접근할 수 없습니다.  
@@ -279,9 +338,9 @@ docker run -d -p 8081:80 --name web-port-8081 my-custom-nginx:1.0
 
 ---
 
-## 8. [5단계] 바인드 마운트(Bind Mount) 및 볼륨(Volume) 영속성 검증
+## 9. [5단계] 바인드 마운트(Bind Mount) 및 볼륨(Volume) 영속성 검증
 
-### 8.1 바인드 마운트 실시간 변경 검증
+### 9.1 바인드 마운트 실시간 변경 검증
 
 컨테이너를 다시 빌드(`docker build`)하거나 재시작하지 않고, 호스트 머신에서 수정한 소스코드가 컨테이너 내부 웹 서버에 즉각 실시간 반영되는지 검증했습니다.
 
@@ -309,7 +368,7 @@ curl http://localhost:8082 | grep mount-check
 
 ---
 
-### 8.2 Docker Named Volume 데이터 영속성 검증
+### 9.2 Docker Named Volume 데이터 영속성 검증
 
 컨테이너가 완전히 삭제(`docker rm -f`)되더라도, 도커 엔진이 관리하는 전용 볼륨에 저장된 데이터는 영구적으로 안전하게 보존됨을 실증했습니다.
 
@@ -341,9 +400,9 @@ docker exec worker-2 cat /data/persistence_log.txt
 
 ---
 
-## 9. [6단계] Git 환경 설정 & GitHub 원격 연동
+## 10. [6단계] Git 환경 설정 & GitHub 원격 연동
 
-### 9.1 사용자 정보 및 기본 브랜치 설정
+### 10.1 사용자 정보 및 기본 브랜치 설정
 ```bash
 # 저장소 로컬 레벨 사용자 및 기본 브랜치 등록
 git config --local user.name "tqetri-ctrl"
@@ -356,7 +415,7 @@ git config --local --list
 | Git 설정 내역 (`git config`) | VS Code 연동 상태 | GitHub 원격 저장소 동기화 |
 | :---: | :---: | :---: |
 | ![Git Config List](pictures/git_config_list.png) | ![Git 연동 상태](pictures/git_연동상태.png) | ![GitHub 원격 연동](pictures/github_연동.png) |
-*▲ 그림 7: Git 사용자 정보 설정, VS Code Source Control 및 GitHub 원격 저장소 커밋 동기화 확인*
+*▲ 그림 8: Git 사용자 정보 설정, VS Code Source Control 및 GitHub 원격 저장소 커밋 동기화 확인*
 
 > 🔒 **보안 및 개인정보 보호 원칙 준수**:
 > - `.gitignore`를 통해 `.env`, `*.pem`, `*.key`, `id_rsa*` 등 모든 환경변수 및 개인 비밀키의 커밋을 원천 차단했습니다.
@@ -364,7 +423,7 @@ git config --local --list
 
 ---
 
-## 10. 🔍 트러블슈팅 보고서 (Troubleshooting Report)
+## 11. 🔍 트러블슈팅 보고서 (Troubleshooting Report)
 
 ### 📌 [트러블슈팅 1] WSL Windows 마운트 드라이브(`/mnt/d/...`) 상의 `chmod` 권한 미반영 현상 (실제 발생 사례)
 
@@ -407,9 +466,9 @@ git config --local --list
 
 ---
 
-## 11. 🎁 [보너스 과제] Docker Compose 및 보안 인증 실증
+## 12. 🎁 [보너스 과제] Docker Compose 및 보안 인증 실증
 
-### 11.1 Docker Compose 기초 및 단일 서비스 구현
+### 12.1 Docker Compose 기초 및 단일 서비스 구현
 컨테이너 실행 명령을 코드(IaC)로 정의한 [`docker-compose.yml`](docker-compose.yml)을 작성하고 서비스를 성공적으로 구동했습니다.
 
 ```yaml
@@ -443,7 +502,7 @@ services:
 
 ---
 
-### 11.2 환경 변수 분리 (`.env` & `.env.example`)
+### 12.2 환경 변수 분리 (`.env` & `.env.example`)
 프로젝트 루트의 `.env` 파일에 포트와 애플리케이션 모드를 분리하고, 저장소에는 안전한 템플릿인 `.env.example`을 제공합니다:
 ```text
 HOST_PORT=8085
@@ -452,7 +511,7 @@ APP_ENV=development
 
 ---
 
-### 11.3 GitHub Ed25519 SSH 키 인증 연동
+### 12.3 GitHub Ed25519 SSH 키 인증 연동
 HTTPS 토큰 방식 대신 안전한 Ed25519 비대칭키 쌍(`id_ed25519`)을 생성하고 GitHub 계정에 공개키를 등록하여 안전한 푸시 인증 파이프라인을 구축했습니다:
 
 ```bash
@@ -464,7 +523,7 @@ ssh -T git@github.com
 
 ---
 
-## 12. 최종 결론 및 학습 소감
+## 13. 최종 결론 및 학습 소감
 
 본 미션을 통해 단순히 개별 명령어를 따라 치는 것을 넘어, **"왜 개발 워크스테이션을 가상화와 컨테이너 기반으로 설계해야 하는가?"**에 대한 본질적인 답을 도출할 수 있었습니다:
 1. **격리와 재현성**: 내 컴퓨터의 라이브러리/OS 설정에 구애받지 않고, Dockerfile과 Compose 코드를 통해 누구나 1초 만에 동일한 실행 환경을 재현할 수 있음을 체감했습니다.
